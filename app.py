@@ -350,3 +350,8 @@ def get_stats(difficulty):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+    
+@app.route('/get_stats/<int:id>', methods=['GET'])
+def get_stats(id):
+    # Votre logique pour récupérer les statistiques
+    return jsonify(stats)
