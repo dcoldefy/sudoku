@@ -1,0 +1,6 @@
+setup.py
+sudoku.egg-info/PKG-INFO
+sudoku.egg-info/SOURCES.txt
+sudoku.egg-info/dependency_links.txt
+sudoku.egg-info/requires.txt
+sudoku.egg-info/top_level.txt

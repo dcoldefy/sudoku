@@ -1,0 +1,6 @@
+Metadata-Version: 2.2
+Name: sudoku
+Version: 0.1
+Requires-Dist: Flask==3.0.0
+Requires-Dist: numpy==1.24.3
+Dynamic: requires-dist
