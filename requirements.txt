@@ -1,3 +1,2 @@
-git config --global user.name "<dcoldefy>"
-git config --global user.email "<david@coldefy.com>"Flask==3.0.0
+Flask==3.0.0
 numpy==1.24.3
