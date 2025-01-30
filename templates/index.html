@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur de Sudoku</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .difficulty-selector {
+            font-size: 1.1em;
+            padding: 5px;
+            margin-right: 10px;
+        }
+
+        .generate-btn, .download-pdf-btn {
+            font-size: 1.1em;
+            padding: 5px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0 5px;
+        }
+
+        .download-pdf-btn {
+            background-color: #2196F3;
+            display: none;
+        }
+
+        .generate-btn:hover {
+            background-color: #45a049;
+        }
+
+        .download-pdf-btn:hover {
+            background-color: #1976D2;
+        }
+
+        .grids-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            page-break-inside: avoid;
+            justify-items: center;
+        }
+
+        .sudoku-grid {
+            border: 2px solid #000;
+            display: inline-block;
+            margin-bottom: 20px;
+            width: fit-content;
+        }
+
+        .sudoku-row {
+            display: flex;
+            width: fit-content;
+        }
+
+        .sudoku-cell {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .sudoku-cell:nth-child(3n) {
+            border-right: 2px solid #000;
+        }
+
+        .sudoku-row:nth-child(3n) .sudoku-cell {
+            border-bottom: 2px solid #000;
+        }
+
+        .progress-container {
+            display: none;
+            margin: 20px auto;
+            text-align: center;
+        }
+
+        .timer {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2196F3;
+            font-family: monospace;
+        }
+
+        .progress-text {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .stats-container {
+            display: none;
+            margin: 20px auto;
+            max-width: 600px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stats-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stat-item {
+            padding: 8px;
+            background-color: white;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .stat-value {
+            font-size: 1.1em;
+            color: #2196F3;
+            font-weight: bold;
+        }
+
+        .stats-toggle {
+            margin: 10px auto;
+            text-align: center;
+        }
+
+        .stats-toggle label {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .stats-toggle input[type="checkbox"] {
+            margin-right: 5px;
+        }
+
+        .historical-stats {
+            margin: 15px auto;
+            padding: 10px;
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            max-width: 600px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .historical-value {
+            font-weight: bold;
+            color: #2196F3;
+        }
+
+        @media print {
+            .controls {
+                display: none;
+            }
+
+            .grids-container {
+                page-break-inside: avoid;
+            }
+
+            body {
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <select class="difficulty-selector" id="difficulty" onchange="saveDifficultyAndReload(this.value)">
+            <option value="1">Niveau 1 - Très facile</option>
+            <option value="2">Niveau 2 - Facile</option>
+            <option value="3">Niveau 3 - Moyen facile</option>
+            <option value="4">Niveau 4 - Moyen</option>
+            <option value="5">Niveau 5 - Moyen difficile</option>
+            <option value="6">Niveau 6 - Difficile</option>
+            <option value="7">Niveau 7 - Très difficile</option>
+            <option value="8">Niveau 8 - Expert</option>
+            <option value="9">Niveau 9 - Extrême</option>
+        </select>
+        <button class="generate-btn" onclick="generateGrids()">Générer les grilles</button>
+        <button class="download-pdf-btn" id="downloadPdfBtn" onclick="downloadPdf()">Télécharger en PDF</button>
+    </div>
+
+    <div class="historical-stats" id="historicalStats">
+        Temps moyen pour créer 4 grilles de niveau <span id="currentLevel">-</span> : 
+        <span class="historical-value" id="historicalValue">-</span>
+        <span id="generationCount"></span>
+    </div>
+
+    <div class="stats-toggle">
+        <label>
+            <input type="checkbox" id="showStats" onchange="toggleStats()">
+            Afficher les statistiques détaillées
+        </label>
+    </div>
+
+    <div class="progress-container" id="progressContainer">
+        <div class="timer" id="timer">0.0 s</div>
+        <div class="progress-text" id="progressText">Génération des grilles en cours...</div>
+    </div>
+
+    <div class="stats-container" id="statsContainer">
+        <div class="stats-title">Statistiques de génération</div>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-label">Temps moyen par grille</div>
+                <div class="stat-value" id="avgTime">-</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Temps total de génération</div>
+                <div class="stat-value" id="totalTime">-</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Temps de création PDF</div>
+                <div class="stat-value" id="pdfTime">-</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Temps total</div>
+                <div class="stat-value" id="completeTime">-</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grids-container" id="gridsContainer"></div>
+
+    <script>
+        let currentPdfUrl = null;
+        let startTime = null;
+        let timerInterval = null;
+        
+        // Charger la préférence d'affichage des stats (false par défaut)
+        document.getElementById('showStats').checked = false;
+        
+        // Restaurer le niveau de difficulté sélectionné
+        const savedDifficulty = localStorage.getItem('selectedDifficulty') || '1';
+        document.getElementById('difficulty').value = savedDifficulty;
+        
+        // Charger les statistiques pour le niveau actuel
+        function loadStats(difficulty) {
+            document.getElementById('currentLevel').textContent = difficulty;
+            fetch(`/get_stats/${difficulty}`)
+                .then(response => response.json())
+                .then(stats => {
+                    if (stats.count > 0) {
+                        document.getElementById('historicalValue').textContent = stats.avg_total_time + ' sec';
+                        document.getElementById('generationCount').textContent = 
+                            `(moyenne sur ${stats.count} générations)`;
+                    } else {
+                        document.getElementById('historicalValue').textContent = '-';
+                        document.getElementById('generationCount').textContent = '(aucune génération)';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur lors du chargement des statistiques:', error);
+                });
+        }
+        
+        function saveDifficultyAndReload(difficulty) {
+            localStorage.setItem('selectedDifficulty', difficulty);
+            loadStats(difficulty);
+        }
+        
+        function toggleStats() {
+            const showStats = document.getElementById('showStats').checked;
+            const statsContainer = document.getElementById('statsContainer');
+            statsContainer.style.display = showStats ? 'block' : 'none';
+            // Sauvegarder la préférence
+            localStorage.setItem('showStats', showStats);
+        }
+
+        function updateTimer() {
+            if (!startTime) return;
+            const currentTime = new Date().getTime();
+            const elapsedTime = (currentTime - startTime) / 1000;
+            document.getElementById('timer').textContent = elapsedTime.toFixed(1) + ' s';
+        }
+
+        function startTimer() {
+            startTime = new Date().getTime();
+            timerInterval = setInterval(updateTimer, 100);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function generateGrids() {
+            const difficulty = document.getElementById('difficulty').value;
+            const progressContainer = document.getElementById('progressContainer');
+            const statsContainer = document.getElementById('statsContainer');
+            const gridsContainer = document.getElementById('gridsContainer');
+            document.getElementById('downloadPdfBtn').style.display = 'none';
+            
+            // Afficher le chronomètre et démarrer
+            progressContainer.style.display = 'block';
+            startTimer();
+            gridsContainer.innerHTML = '';
+            
+            if (document.getElementById('showStats').checked) {
+                statsContainer.style.display = 'block';
+            }
+            
+            fetch('/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ difficulty: parseInt(difficulty) })
+            })
+            .then(response => response.json())
+            .then(data => {
+                stopTimer();
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                    
+                    // Mettre à jour les statistiques historiques
+                    document.getElementById('historicalValue').textContent = data.timing_stats.historical_avg + ' sec';
+                    document.getElementById('generationCount').textContent = 
+                        `(moyenne sur ${data.timing_stats.generation_count} générations)`;
+                    
+                    // Afficher les statistiques détaillées si la case est cochée
+                    if (document.getElementById('showStats').checked) {
+                        document.getElementById('avgTime').textContent = data.timing_stats.average_grid_time + ' sec';
+                        document.getElementById('totalTime').textContent = data.timing_stats.total_generation_time + ' sec';
+                        document.getElementById('pdfTime').textContent = data.timing_stats.pdf_generation_time + ' sec';
+                        document.getElementById('completeTime').textContent = data.timing_stats.total_time + ' sec';
+                        statsContainer.style.display = 'block';
+                    }
+                }, 500);
+                
+                data.grids.forEach((grid, index) => {
+                    const gridElement = document.createElement('div');
+                    gridElement.className = 'sudoku-grid';
+                    
+                    grid.forEach(row => {
+                        const rowElement = document.createElement('div');
+                        rowElement.className = 'sudoku-row';
+                        
+                        row.forEach(cell => {
+                            const cellElement = document.createElement('div');
+                            cellElement.className = 'sudoku-cell';
+                            cellElement.textContent = cell === 0 ? '' : cell;
+                            rowElement.appendChild(cellElement);
+                        });
+                        
+                        gridElement.appendChild(rowElement);
+                    });
+                    
+                    gridsContainer.appendChild(gridElement);
+                });
+
+                // Afficher le bouton de téléchargement PDF
+                currentPdfUrl = data.pdf_url;
+                document.getElementById('downloadPdfBtn').style.display = 'inline-block';
+            })
+            .catch(error => {
+                stopTimer();
+                progressContainer.style.display = 'none';
+                statsContainer.style.display = 'none';
+                alert('Une erreur est survenue lors de la génération des grilles.');
+            });
+        }
+
+        function downloadPdf() {
+            if (currentPdfUrl) {
+                window.location.href = currentPdfUrl;
+            }
+        }
+
+        // Initialiser l'affichage des stats selon la préférence
+        toggleStats();
+        
+        // Charger les statistiques initiales
+        loadStats(savedDifficulty);
+    </script>
+</body>
+</html>
